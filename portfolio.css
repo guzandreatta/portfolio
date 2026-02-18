@@ -537,6 +537,55 @@
   }
   .img-count { font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; }
 
+  /* ── SITE GATE ── */
+  #site-gate {
+    position: fixed; inset: 0;
+    z-index: 500;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  #site-gate.unlocked {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-12px);
+  }
+  .gate-box {
+    width: 100%; max-width: 380px;
+    padding: 0 2rem;
+    text-align: center;
+  }
+  .gate-logo {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+  .gate-title {
+    font-family: var(--font-display);
+    font-size: 2.8rem;
+    line-height: 1;
+    margin-bottom: 0.8rem;
+    color: var(--text);
+  }
+  .gate-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+  .gate-error {
+    color: #ff6666;
+    font-size: 0.8rem;
+    margin-top: 0.8rem;
+    display: none;
+  }
+  /* Hide site content while gate is active */
+  body.gated > *:not(#site-gate) {
+    visibility: hidden;
+  }
+
   @media (max-width: 768px) {
     nav { padding: 1rem 1.5rem; }
     .nav-links { gap: 1.5rem; }

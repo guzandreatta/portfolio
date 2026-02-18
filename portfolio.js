@@ -1,5 +1,33 @@
 // ─── DATA ────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = 'designer2025';
+const SITE_PASSWORD  = 'portfolio2025';
+
+// ─── SITE GATE ───────────────────────────────────────────────────────────
+function gateUnlock() {
+  const val = document.getElementById('gate-pwd').value;
+  if (val === SITE_PASSWORD) {
+    sessionStorage.setItem('ga_unlocked', '1');
+    const gate = document.getElementById('site-gate');
+    gate.classList.add('unlocked');
+    document.body.classList.remove('gated');
+    setTimeout(() => gate.remove(), 600);
+  } else {
+    document.getElementById('gate-error').style.display = 'block';
+    document.getElementById('gate-pwd').value = '';
+    document.getElementById('gate-pwd').focus();
+  }
+}
+
+function initGate() {
+  if (sessionStorage.getItem('ga_unlocked') === '1') {
+    const gate = document.getElementById('site-gate');
+    if (gate) gate.remove();
+    document.body.classList.remove('gated');
+  } else {
+    document.body.classList.add('gated');
+    setTimeout(() => document.getElementById('gate-pwd').focus(), 100);
+  }
+}
 
 const defaultFonts = {
   embed: '<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">',
@@ -500,5 +528,6 @@ function showToast() {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────
+initGate();
 applyFonts(fontData);
 renderPortfolio();
