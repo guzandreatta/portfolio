@@ -1,4 +1,4 @@
-// ─── DATA ───────────────────────────────────────────────────────────────
+// ─── DATA ────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = 'designer2025';
 
 const defaultFonts = {
@@ -18,7 +18,8 @@ const defaultCases = [
     challenge: 'The original onboarding asked for 28 fields before letting users see any value. Users abandoned because the perceived effort was too high relative to the unknown benefit.',
     solution: 'We introduced a progressive disclosure model — showing a live preview of the product before asking for any data, then collecting information contextually as users needed features. We also created a personalised checklist system.',
     outcome: 'Trial-to-paid conversion improved by 38%. Time-to-first-value dropped from 11 minutes to under 4 minutes. The design was adopted across 3 additional product lines.',
-    tags: ['UX Research', 'Fintech', 'Onboarding', 'B2B SaaS', 'Conversion Optimisation']
+    tags: ['UX Research', 'Fintech', 'Onboarding', 'B2B SaaS', 'Conversion Optimisation'],
+    images: []
   },
   {
     id: 2,
@@ -29,7 +30,8 @@ const defaultCases = [
     challenge: 'No shared design language existed. Designers were solving the same problems repeatedly while developers were building components from scratch for every team. The product felt disjointed to users navigating between modules.',
     solution: 'Led a cross-functional team to audit the existing UI, identify patterns, and create a three-tier token system (global → alias → component). Built a Figma library with 200+ components and a documentation site with usage guidelines and code snippets.',
     outcome: 'Handoff time reduced by 50%. Designer onboarding time cut from 3 weeks to 4 days. NPS for enterprise users improved 14 points in the 6 months following rollout.',
-    tags: ['Design Systems', 'Leadership', 'Enterprise', 'Figma', 'Tokens']
+    tags: ['Design Systems', 'Leadership', 'Enterprise', 'Figma', 'Tokens'],
+    images: []
   },
   {
     id: 3,
@@ -40,7 +42,8 @@ const defaultCases = [
     challenge: 'Speed was critical — investors needed an MVP in 14 weeks. We had no existing user data and a founder team with engineering backgrounds but no design experience.',
     solution: 'Ran a two-week discovery sprint to map user journeys and identify the riskiest assumptions. Used rapid prototyping to validate key flows with 40 users before writing a line of code. Designed a minimal, location-first UI that prioritised the 3 core actions: find, unlock, ride.',
     outcome: "Launched on schedule. 50,000 users in Month 1. App Store rating of 4.7. The design team grew from 1 (me) to 4 designers based on the product's success.",
-    tags: ['Zero-to-One', 'Mobile', 'Consumer', 'Startup', 'iOS', 'Rapid Prototyping']
+    tags: ['Zero-to-One', 'Mobile', 'Consumer', 'Startup', 'iOS', 'Rapid Prototyping'],
+    images: []
   }
 ];
 
@@ -58,8 +61,10 @@ const defaultContact = {
 };
 
 function loadData(key, def) {
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(def));
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : JSON.parse(JSON.stringify(def));
+  } catch(e) { return JSON.parse(JSON.stringify(def)); }
 }
 function saveData(key, val) {
   localStorage.setItem(key, JSON.stringify(val));
@@ -69,6 +74,9 @@ let fontData    = loadData('ga_fonts',   defaultFonts);
 let caseData    = loadData('ga_cases',   defaultCases);
 let aboutData   = loadData('ga_about',   defaultAbout);
 let contactData = loadData('ga_contact', defaultContact);
+
+// Migration: ensure all cases have images array
+caseData = caseData.map(c => ({ images: [], ...c }));
 
 // ─── FONTS ───────────────────────────────────────────────────────────────
 function applyFonts(data) {
@@ -106,7 +114,10 @@ function populateFontForm() {
   document.getElementById('cms-font-body').value    = fontData.body;
   updateFontPreviews();
   ['cms-font-display','cms-font-serif','cms-font-body'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updateFontPreviews);
+    const el = document.getElementById(id);
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    clone.addEventListener('input', updateFontPreviews);
   });
 }
 
@@ -128,12 +139,67 @@ function updateFontPreviews() {
   pb.textContent = b + ' — the quick brown fox jumps over the lazy dog';
 }
 
+// ─── SLIDESHOW ───────────────────────────────────────────────────────────
+let currentSlide = 0;
+let currentImages = [];
+
+function buildSlideshow(images) {
+  currentImages = images || [];
+  currentSlide  = 0;
+  const slideshow = document.getElementById('modal-slideshow');
+  const track     = document.getElementById('slideshow-track');
+  const dots      = document.getElementById('slide-dots');
+  const prevBtn   = document.getElementById('slide-prev');
+  const nextBtn   = document.getElementById('slide-next');
+
+  if (!currentImages.length) {
+    slideshow.classList.add('hidden');
+    return;
+  }
+  slideshow.classList.remove('hidden');
+
+  track.innerHTML = currentImages.map(src =>
+    '<div class="slide"><img src="' + src + '" alt="Case study image" loading="lazy"></div>'
+  ).join('');
+
+  dots.innerHTML = currentImages.map((_, i) =>
+    '<div class="slide-dot' + (i === 0 ? ' active' : '') +
+    '" onclick="goToSlide(' + i + ')"></div>'
+  ).join('');
+
+  const multi = currentImages.length > 1;
+  prevBtn.style.display = multi ? 'flex' : 'none';
+  nextBtn.style.display = multi ? 'flex' : 'none';
+  dots.style.display    = multi ? 'flex' : 'none';
+
+  goToSlide(0);
+}
+
+function goToSlide(n) {
+  currentSlide = (n + currentImages.length) % currentImages.length;
+  document.getElementById('slideshow-track').style.transform =
+    'translateX(-' + (currentSlide * 100) + '%)';
+  document.querySelectorAll('.slide-dot').forEach((d, i) =>
+    d.classList.toggle('active', i === currentSlide)
+  );
+}
+function slideNext() { goToSlide(currentSlide + 1); }
+function slidePrev() { goToSlide(currentSlide - 1); }
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('modal-overlay').classList.contains('active')) return;
+  if (e.key === 'ArrowRight') slideNext();
+  if (e.key === 'ArrowLeft')  slidePrev();
+});
+
 // ─── RENDER PORTFOLIO ────────────────────────────────────────────────────
 function renderPortfolio() {
   document.getElementById('about-bio1').textContent = aboutData.bio1;
   document.getElementById('about-bio2').textContent = aboutData.bio2;
   const skillsEl = document.getElementById('skills-container');
-  skillsEl.innerHTML = aboutData.skills.split(',').map(s => '<span class="skill-tag">' + s.trim() + '</span>').join('');
+  skillsEl.innerHTML = aboutData.skills.split(',').map(s =>
+    '<span class="skill-tag">' + s.trim() + '</span>'
+  ).join('');
 
   const emailEl = document.getElementById('contact-email');
   emailEl.textContent = contactData.email;
@@ -142,15 +208,16 @@ function renderPortfolio() {
   linkedinEl.textContent = contactData.linkedin;
   linkedinEl.href = contactData.linkedin;
   document.getElementById('contact-location').textContent = contactData.location;
-  document.getElementById('contact-bio').textContent = contactData.bio;
+  document.getElementById('contact-bio').textContent      = contactData.bio;
   document.getElementById('contact-cta-email').href = 'mailto:' + contactData.email;
 
   const container = document.getElementById('cases-container');
   container.innerHTML = caseData.map((c, i) =>
     '<div class="case-card" onclick="openModal(' + i + ')">' +
-      '<div class="case-num">' + String(i+1).padStart(2,'0') + '</div>' +
+      '<div class="case-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="case-body"><h3>' + c.title + '</h3><p>' + c.summary + '</p></div>' +
-      '<div class="case-tags">' + (c.tags||[]).slice(0,3).map(t => '<span class="case-tag">' + t + '</span>').join('') + '</div>' +
+      '<div class="case-tags">' + (c.tags || []).slice(0, 3).map(t =>
+        '<span class="case-tag">' + t + '</span>').join('') + '</div>' +
       '<div class="case-arrow">→</div>' +
     '</div>'
   ).join('');
@@ -159,13 +226,16 @@ function renderPortfolio() {
 // ─── MODAL ───────────────────────────────────────────────────────────────
 function openModal(i) {
   const c = caseData[i];
-  document.getElementById('modal-kicker').textContent   = c.client;
-  document.getElementById('modal-title').textContent    = c.title;
-  document.getElementById('modal-overview').textContent = c.overview;
-  document.getElementById('modal-challenge').textContent= c.challenge;
-  document.getElementById('modal-solution').textContent = c.solution;
-  document.getElementById('modal-outcome').textContent  = c.outcome;
-  document.getElementById('modal-tags').innerHTML = (c.tags||[]).map(t => '<span class="case-tag">' + t + '</span>').join('');
+  document.getElementById('modal-kicker').textContent    = c.client;
+  document.getElementById('modal-title').textContent     = c.title;
+  document.getElementById('modal-overview').textContent  = c.overview;
+  document.getElementById('modal-challenge').textContent = c.challenge;
+  document.getElementById('modal-solution').textContent  = c.solution;
+  document.getElementById('modal-outcome').textContent   = c.outcome;
+  document.getElementById('modal-tags').innerHTML = (c.tags || []).map(t =>
+    '<span class="case-tag">' + t + '</span>'
+  ).join('');
+  buildSlideshow(c.images || []);
   document.getElementById('modal-overlay').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -194,11 +264,11 @@ function closeAdmin() {
 }
 function showLogin() {
   document.getElementById('login-panel').style.display = 'block';
-  document.getElementById('cms-panel').style.display = 'none';
+  document.getElementById('cms-panel').style.display   = 'none';
 }
 function showCMS() {
   document.getElementById('login-panel').style.display = 'none';
-  document.getElementById('cms-panel').style.display = 'block';
+  document.getElementById('cms-panel').style.display   = 'block';
   populateCMSForms();
 }
 function doLogin() {
@@ -219,13 +289,13 @@ function doLogout() {
 
 function populateCMSForms() {
   populateFontForm();
-  document.getElementById('cms-bio1').value    = aboutData.bio1;
-  document.getElementById('cms-bio2').value    = aboutData.bio2;
-  document.getElementById('cms-skills').value  = aboutData.skills;
-  document.getElementById('cms-email').value           = contactData.email;
-  document.getElementById('cms-linkedin').value        = contactData.linkedin;
+  document.getElementById('cms-bio1').value             = aboutData.bio1;
+  document.getElementById('cms-bio2').value             = aboutData.bio2;
+  document.getElementById('cms-skills').value           = aboutData.skills;
+  document.getElementById('cms-email').value            = contactData.email;
+  document.getElementById('cms-linkedin').value         = contactData.linkedin;
   document.getElementById('cms-location-contact').value = contactData.location;
-  document.getElementById('cms-contact-bio').value     = contactData.bio;
+  document.getElementById('cms-contact-bio').value      = contactData.bio;
   renderCMSCases();
 }
 
@@ -252,6 +322,63 @@ function saveContact() {
   showToast();
 }
 
+// ─── IMAGE HANDLING ───────────────────────────────────────────────────────
+const caseImages = {};
+
+function initImageUploader(idx) {
+  caseImages[idx] = [...(caseData[idx].images || [])];
+  renderImageThumbs(idx);
+}
+
+function triggerUpload(idx) {
+  const input = document.getElementById('img-input-' + idx);
+  if (input) input.click();
+}
+
+function handleImageUpload(idx, input) {
+  const MAX = 4;
+  const files = Array.from(input.files);
+  const slots = MAX - (caseImages[idx] || []).length;
+  if (slots <= 0) { alert('Maximum 4 images per case study.'); input.value = ''; return; }
+  const toAdd = files.slice(0, slots);
+  let loaded = 0;
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      caseImages[idx].push(e.target.result);
+      loaded++;
+      if (loaded === toAdd.length) renderImageThumbs(idx);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function removeImage(idx, imgIdx) {
+  caseImages[idx].splice(imgIdx, 1);
+  renderImageThumbs(idx);
+}
+
+function renderImageThumbs(idx) {
+  const container = document.getElementById('img-thumbs-' + idx);
+  const count     = document.getElementById('img-count-'  + idx);
+  const zone      = document.getElementById('img-zone-'   + idx);
+  if (!container) return;
+  const imgs = caseImages[idx] || [];
+  const MAX  = 4;
+
+  container.innerHTML = imgs.map((src, j) =>
+    '<div class="img-thumb">' +
+      '<img src="' + src + '" alt="img' + j + '">' +
+      '<button class="img-thumb-del" onclick="removeImage(' + idx + ',' + j + ')">✕</button>' +
+    '</div>'
+  ).join('');
+
+  count.textContent = imgs.length + ' / ' + MAX + ' images';
+  if (zone) zone.style.opacity = imgs.length >= MAX ? '0.4' : '1';
+}
+
+// ─── CMS CASES ───────────────────────────────────────────────────────────
 function renderCMSCases() {
   const el = document.getElementById('cms-cases');
   el.innerHTML = caseData.map((c, i) =>
@@ -267,14 +394,36 @@ function renderCMSCases() {
         '</div>' +
       '</div>' +
       '<div class="edit-form" id="edit-form-' + i + '">' +
-        '<div class="field"><label>Title</label><input type="text" id="ef-title-' + i + '" value="' + escHtml(c.title||'') + '"></div>' +
-        '<div class="field"><label>Client / Year</label><input type="text" id="ef-client-' + i + '" value="' + escHtml(c.client||'') + '"></div>' +
-        '<div class="field"><label>Summary (card)</label><textarea id="ef-summary-' + i + '" rows="2">' + escHtml(c.summary||'') + '</textarea></div>' +
-        '<div class="field"><label>Overview</label><textarea id="ef-overview-' + i + '" rows="3">' + escHtml(c.overview||'') + '</textarea></div>' +
-        '<div class="field"><label>Challenge</label><textarea id="ef-challenge-' + i + '" rows="3">' + escHtml(c.challenge||'') + '</textarea></div>' +
-        '<div class="field"><label>Solution</label><textarea id="ef-solution-' + i + '" rows="3">' + escHtml(c.solution||'') + '</textarea></div>' +
-        '<div class="field"><label>Outcome</label><textarea id="ef-outcome-' + i + '" rows="2">' + escHtml(c.outcome||'') + '</textarea></div>' +
-        '<div class="field"><label>Tags (comma-separated)</label><input type="text" id="ef-tags-' + i + '" value="' + escHtml((c.tags||[]).join(', ')) + '"></div>' +
+        '<div class="field"><label>Title</label>' +
+          '<input type="text" id="ef-title-' + i + '" value="' + escHtml(c.title || '') + '"></div>' +
+        '<div class="field"><label>Client / Year</label>' +
+          '<input type="text" id="ef-client-' + i + '" value="' + escHtml(c.client || '') + '"></div>' +
+        '<div class="field"><label>Summary (card)</label>' +
+          '<textarea id="ef-summary-' + i + '" rows="2">' + escHtml(c.summary || '') + '</textarea></div>' +
+        '<div class="field"><label>Overview</label>' +
+          '<textarea id="ef-overview-' + i + '" rows="3">' + escHtml(c.overview || '') + '</textarea></div>' +
+        '<div class="field"><label>Challenge</label>' +
+          '<textarea id="ef-challenge-' + i + '" rows="3">' + escHtml(c.challenge || '') + '</textarea></div>' +
+        '<div class="field"><label>Solution</label>' +
+          '<textarea id="ef-solution-' + i + '" rows="3">' + escHtml(c.solution || '') + '</textarea></div>' +
+        '<div class="field"><label>Outcome</label>' +
+          '<textarea id="ef-outcome-' + i + '" rows="2">' + escHtml(c.outcome || '') + '</textarea></div>' +
+        '<div class="field"><label>Tags (comma-separated)</label>' +
+          '<input type="text" id="ef-tags-' + i + '" value="' + escHtml((c.tags || []).join(', ')) + '"></div>' +
+
+        '<div class="field">' +
+          '<label>Images <span style="color:var(--muted);font-size:0.65rem;letter-spacing:0;">' +
+          '(up to 4 — displayed as slideshow in the case study modal)</span></label>' +
+          '<div class="img-upload-zone" id="img-zone-' + i + '" onclick="triggerUpload(' + i + ')">' +
+            '<p>Click to upload images</p>' +
+            '<span>JPG, PNG, WEBP · max 4 images</span>' +
+          '</div>' +
+          '<input type="file" id="img-input-' + i + '" accept="image/*" multiple style="display:none"' +
+            ' onchange="handleImageUpload(' + i + ', this)">' +
+          '<div class="img-thumbs" id="img-thumbs-' + i + '"></div>' +
+          '<div class="img-count" id="img-count-' + i + '"></div>' +
+        '</div>' +
+
         '<div class="save-bar">' +
           '<button class="btn" onclick="saveCase(' + i + ')">Save Case Study</button>' +
           '<button class="btn-ghost" onclick="toggleEdit(' + i + ')">Cancel</button>' +
@@ -285,11 +434,16 @@ function renderCMSCases() {
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function toggleEdit(i) {
-  document.getElementById('edit-form-' + i).classList.toggle('open');
+  const form = document.getElementById('edit-form-' + i);
+  const opening = !form.classList.contains('open');
+  form.classList.toggle('open');
+  if (opening) initImageUploader(i);
 }
 
 function saveCase(i) {
@@ -302,7 +456,9 @@ function saveCase(i) {
     challenge: document.getElementById('ef-challenge-'+ i).value,
     solution:  document.getElementById('ef-solution-' + i).value,
     outcome:   document.getElementById('ef-outcome-'  + i).value,
-    tags:      document.getElementById('ef-tags-'     + i).value.split(',').map(s => s.trim()).filter(Boolean)
+    tags:      document.getElementById('ef-tags-' + i).value
+                 .split(',').map(s => s.trim()).filter(Boolean),
+    images:    caseImages[i] || []
   };
   saveData('ga_cases', caseData);
   renderPortfolio();
@@ -319,20 +475,24 @@ function deleteCase(i) {
 }
 
 function addCase() {
+  const newIdx = caseData.length;
   caseData.push({
-    id: Date.now(),
-    title: 'New Case Study',
-    client: 'Client — Year',
+    id: Date.now(), title: 'New Case Study', client: 'Client — Year',
     summary: 'A brief summary of the project and its impact.',
-    overview: '', challenge: '', solution: '', outcome: '', tags: []
+    overview: '', challenge: '', solution: '', outcome: '',
+    tags: [], images: []
   });
   saveData('ga_cases', caseData);
   renderPortfolio();
   renderCMSCases();
-  setTimeout(() => toggleEdit(caseData.length - 1), 50);
-  document.getElementById('cms-cases').lastElementChild.scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => {
+    toggleEdit(newIdx);
+    document.getElementById('cms-cases').lastElementChild
+      .scrollIntoView({ behavior: 'smooth' });
+  }, 50);
 }
 
+// ─── TOAST ───────────────────────────────────────────────────────────────
 function showToast() {
   const t = document.getElementById('toast');
   t.classList.add('show');
